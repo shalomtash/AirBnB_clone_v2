@@ -9,30 +9,28 @@ class FileStorage:
     __objects = {}
 
     def all(self, cls=None):
-        """Returns a dictionary of models currently in storage"""
-        if cls is None:
-            return self.__objects
-        cls_name = cls.__name__
-        dct = {}
-        for key in self.__objects.keys():
-            if key.split('.')[0] == cls_name:
-                dct[key] = self.__objects[key]
-        return dct
+        """Returns the list of objects of one type of class.
+        it’s an optional filtering"""
+        if cls is not None:
+            class_dict = {}
+            for key, value in FileStorage.__objects.items():
+                if value.__class__ == cls:
+                    class_dict[key] = value
+            return class_dict
+        return FileStorage.__objects
 
     def new(self, obj):
         """Adds new object to storage dictionary"""
-        self.__objects.update(
-            {obj.to_dict()['__class__'] + '.' + obj.id: obj}
-            )
+        self.all().update({obj.to_dict()['__class__'] + '.' + obj.id: obj})
 
     def save(self):
         """Saves storage dictionary to file"""
-        with open(self.__file_path, 'w') as f:
+        with open(FileStorage.__file_path, 'w') as f:
             temp = {}
-            temp.update(self.__objects)
+            temp.update(FileStorage.__objects)
             for key, val in temp.items():
                 temp[key] = val.to_dict()
-            json.dump(temp, f)
+            json.dump(temp, f, indent=4)
 
     def reload(self):
         """Loads storage dictionary from file"""
@@ -51,23 +49,24 @@ class FileStorage:
                   }
         try:
             temp = {}
-            with open(self.__file_path, 'r') as f:
+            with open(FileStorage.__file_path, 'r') as f:
                 temp = json.load(f)
                 for key, val in temp.items():
-                    self.all()[key] = classes[val['__class__']](**val)
+                        self.all()[key] = classes[val['__class__']](**val)
         except FileNotFoundError:
             pass
 
     def delete(self, obj=None):
-        ''' deletes the object obj from the attribute
-            __objects if it's inside it
-        '''
-        if obj is None:
-            return
-        obj_key = obj.to_dict()['__class__'] + '.' + obj.id
-        if obj_key in self.__objects.keys():
-            del self.__objects[obj_key]
+        """Delete obj from __objects if it’s
+        inside - if obj is equal to None, the method should not do anything
+        """
+        if obj is not None:
+            del FileStorage.__objects[obj.to_dict()['__class__'] + '.' +
+                                      obj.id]
+            self.save()
+        else:
+            pass
 
     def close(self):
-        """Call the reload method"""
+        """Deserializing the JSON file to objects"""
         self.reload()
